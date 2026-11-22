@@ -290,7 +290,9 @@ internal class Settings: NSStackView, Settings_v, NSTextFieldDelegate {
         let interface = Store.shared.string(key: "\(self.title)_interface", defaultValue: "")
 
         DispatchQueue.global(qos: .userInitiated).async {
-            let result = Result { try NetworkSpeedTest.run(interface: interface) }
+            let result = Result {
+                try JSONEncoder().encode(NetworkSpeedTest.run(interface: interface))
+            }
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 self.speedTestRunning = false

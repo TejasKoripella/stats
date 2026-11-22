@@ -3,7 +3,7 @@ import Foundation
 enum NetworkSpeedTest {
     static let resultKey = "Network_speedTestResult"
 
-    struct Result {
+    struct Result: Codable {
         let downloadBytesPerSecond: Int64
         let uploadBytesPerSecond: Int64
 
@@ -31,7 +31,7 @@ enum NetworkSpeedTest {
         case invalidThroughput
     }
 
-    static func run(interface: String) throws -> Data {
+    static func run(interface: String) throws -> Result {
         let process = Process()
         let output = Pipe()
         var arguments = ["-s"]
@@ -52,7 +52,6 @@ enum NetworkSpeedTest {
         guard process.terminationReason == .exit && process.terminationStatus == 0 else {
             throw TestError.commandFailed
         }
-        _ = try Result(data: data)
-        return data
+        return try Result(data: data)
     }
 }
