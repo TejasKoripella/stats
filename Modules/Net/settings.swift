@@ -315,7 +315,7 @@ internal class Settings: NSStackView, Settings_v, NSTextFieldDelegate {
         self.speedTestTimer = nil
         guard let seconds = self.speedTestRefreshInterval.seconds else { return }
         let timer = Timer(timeInterval: seconds, repeats: true) { [weak self] _ in
-            self?.runSpeedTest(automatic: true)
+            self?.startSpeedTest(automatic: true)
         }
         timer.tolerance = 0.5
         self.speedTestTimer = timer
@@ -328,13 +328,13 @@ internal class Settings: NSStackView, Settings_v, NSTextFieldDelegate {
         self.scheduleSpeedTestRefresh()
         self.updateSpeedTestButtons()
         if interval != .manual {
-            self.runSpeedTest(automatic: true)
+            self.startSpeedTest(automatic: true)
         }
     }
     @objc private func runSpeedTest() {
-        self.runSpeedTest(automatic: false)
+        self.startSpeedTest(automatic: false)
     }
-    private func runSpeedTest(automatic: Bool) {
+    private func startSpeedTest(automatic: Bool) {
         guard !self.speedTestRunning, !automatic || self.canRunAutomaticSpeedTest() else { return }
         self.speedTestRunning = true
         self.updateSpeedTestButtons()
