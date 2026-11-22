@@ -270,7 +270,12 @@ public class Network: Module {
         
         self.menuBar.widgets.filter{ $0.isActive }.forEach { (w: SWidget) in
             switch w.item {
-            case let widget as SpeedWidget: widget.setValue(input: download, output: upload)
+            case let widget as SpeedWidget:
+                if let data = Store.shared.data(key: NetworkSpeedTest.resultKey), let test = try? NetworkSpeedTest.Result(data: data) {
+                    widget.setValue(input: test.downloadBytesPerSecond, output: test.uploadBytesPerSecond, measured: true)
+                } else {
+                    widget.setValue(input: download, output: upload)
+                }
             case let widget as NetworkChart: widget.setValue(upload: Double(upload), download: Double(download))
             case let widget as TextWidget:
                 var text = self.textValue

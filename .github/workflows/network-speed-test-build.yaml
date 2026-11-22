@@ -1,0 +1,25 @@
+name: Build Stats speed-test fork
+
+on:
+  push:
+    branches: [network-speed-test]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build Stats for Apple silicon
+        run: |
+          xcodebuild -scheme Stats -destination 'platform=macOS,arch=arm64' \
+            -configuration Release -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+      - name: Package app
+        run: ditto -c -k --keepParent build/Build/Products/Release/Stats.app Stats-speed-test.zip
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Stats-speed-test
+          path: Stats-speed-test.zip
+          if-no-files-found: error

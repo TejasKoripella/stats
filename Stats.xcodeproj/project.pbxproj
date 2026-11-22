@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		92F817112F14410000BA5201 /* NetworkSpeedTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92F817102F14410000BA5201 /* NetworkSpeedTest.swift */; };
 		4A05F9BD83C04F70BFFF7F37 /* Kit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 369463B2B7EA4AF0A895A9B6 /* Kit.swift */; };
 		5C038CF62D86EE8A00516809 /* SystemStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C038CF52D86EE8700516809 /* SystemStats.swift */; };
 		5C044F7A2B3DE6F3005F6951 /* portal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C044F792B3DE6F3005F6951 /* portal.swift */; };
@@ -537,6 +538,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		92F817102F14410000BA5201 /* NetworkSpeedTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkSpeedTest.swift; sourceTree = "<group>"; };
 		0192A7ED2B017E190056F918 /* hi */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = hi; path = hi.lproj/Localizable.strings; sourceTree = "<group>"; };
 		13BE56042D0E6963001C58EC /* en-AU */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "en-AU"; path = "en-AU.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		2658929724FC0F3B00FB3B6A /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
@@ -1179,6 +1181,7 @@
 			children = (
 				9A3E17D8247A94B500449CD1 /* main.swift */,
 				9A3E17DA247A94BC00449CD1 /* readers.swift */,
+				92F817102F14410000BA5201 /* NetworkSpeedTest.swift */,
 				9A3E17E9247B07BF00449CD1 /* popup.swift */,
 				5C23BC0B29A10BE000DBA990 /* portal.swift */,
 				9A58DEA324B3647600716A9F /* settings.swift */,
@@ -2331,6 +2334,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9A3E17DB247A94BC00449CD1 /* readers.swift in Sources */,
+				92F817112F14410000BA5201 /* NetworkSpeedTest.swift in Sources */,
 				9A3E17EA247B07BF00449CD1 /* popup.swift in Sources */,
 				5C50DB402FAF4CBE008BACB6 /* preview.swift in Sources */,
 				5C23BC0C29A10BE000DBA990 /* portal.swift in Sources */,

@@ -74,6 +74,9 @@ internal class Settings: NSStackView, Settings_v, NSTextFieldDelegate {
     private var baseValue: String = "byte"
     private var speedUnitValue: String = NetworkSpeedUnitAuto
     private var textValue: String = "$addr.public - $status"
+    private var speedTestRunning = false
+    private var speedTestButton: NSButton?
+    private var liveSpeedButton: NSButton?
     
     public var callback: (() -> Void) = {}
     public var callbackWhenUpdateNumberOfProcesses: (() -> Void) = {}
@@ -135,6 +138,18 @@ internal class Settings: NSStackView, Settings_v, NSTextFieldDelegate {
     
     public func load(widgets: [widget_t]) {
         self.subviews.forEach{ $0.removeFromSuperview() }
+
+        if widgets.contains(.speed) {
+            let testButton = NSButton(title: localizedString("Run speed test"), target: self, action: #selector(self.runSpeedTest))
+            let liveButton = NSButton(title: localizedString("Show live speeds"), target: self, action: #selector(self.showLiveSpeeds))
+            self.speedTestButton = testButton
+            self.liveSpeedButton = liveButton
+            self.updateSpeedTestButtons()
+            let buttons = NSStackView(views: [testButton, liveButton])
+            self.addArrangedSubview(PreferencesSection([
+                PreferencesRow(localizedString("Internet speed test"), component: buttons)
+            ]))
+        }
         
         self.addArrangedSubview(PreferencesSection([
             PreferencesRow(localizedString("Number of top processes"), component: self.selectView(
@@ -262,6 +277,41 @@ internal class Settings: NSStackView, Settings_v, NSTextFieldDelegate {
         }
     }
     
+    private func updateSpeedTestButtons() {
+        self.speedTestButton?.title = localizedString(self.speedTestRunning ? "Testing…" : "Run speed test")
+        self.speedTestButton?.isEnabled = !self.speedTestRunning
+        self.liveSpeedButton?.isEnabled = !self.speedTestRunning && Store.shared.exist(key: NetworkSpeedTest.resultKey)
+    }
+
+    @objc private func runSpeedTest() {
+        guard !self.speedTestRunning else { return }
+        self.speedTestRunning = true
+        self.updateSpeedTestButtons()
+        let interface = Store.shared.string(key: "\(self.title)_interface", defaultValue: "")
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = Result { try NetworkSpeedTest.run(interface: interface) }
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.speedTestRunning = false
+                if case .success(let data) = result {
+                    Store.shared.set(key: NetworkSpeedTest.resultKey, value: data)
+                } else if let window = self.window {
+                    let alert = NSAlert()
+                    alert.messageText = localizedString("The internet speed test didn’t complete.")
+                    alert.informativeText = localizedString("Check your connection and run the test again.")
+                    alert.beginSheetModal(for: window)
+                }
+                self.updateSpeedTestButtons()
+            }
+        }
+    }
+
+    @objc private func showLiveSpeeds() {
+        Store.shared.remove(NetworkSpeedTest.resultKey)
+        self.updateSpeedTestButtons()
+    }
+
     private func inputField(id: String, value: String, placeholder: String) -> NSTextField {
         let field: NSTextField = NSTextField()
         field.identifier = NSUserInterfaceItemIdentifier(id)

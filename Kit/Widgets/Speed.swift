@@ -31,6 +31,7 @@ public class SpeedWidget: WidgetWrapper {
     
     private var _inputValue: Int64 = 0
     private var _outputValue: Int64 = 0
+    private var _measured = false
     private var inputValue: Int64 {
         get { self.queue.sync { self._inputValue } }
         set { self.queue.sync { self._inputValue = newValue } }
@@ -141,6 +142,14 @@ public class SpeedWidget: WidgetWrapper {
     
     public override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
+
+        let measurement = self.queue.sync { () -> (download: Int64, upload: Int64)? in
+            self._measured ? (self._inputValue, self._outputValue) : nil
+        }
+        if let measurement {
+            self.setWidth(self.drawTwoRows(measurement: measurement))
+            return
+        }
         
         var width: CGFloat = 0
         switch self.modeState {
@@ -335,23 +344,28 @@ public class SpeedWidget: WidgetWrapper {
     
     // MARK: - two rows
     
-    private func drawTwoRows() -> CGFloat {
+    private func drawTwoRows(measurement: (download: Int64, upload: Int64)? = nil) -> CGFloat {
         var width: CGFloat = 7
         var x: CGFloat = 7
+        let measured = measurement != nil
+        let downloadFirst = measured || self.displayValueState == "io"
         
         if self.iconAlignmentState == "right" {
             x = 0
         }
-        if self.icon == "none" {
+        if self.icon == "none" && !measured {
             x = 0
             width = 0
         }
         
-        if self.valueState {
-            var rowWidth: CGFloat = self.unitsState ? 48 : 30
+        if self.valueState || measured {
+            var rowWidth: CGFloat = self.unitsState || measured ? 48 : 30
             let rowHeight: CGFloat = self.frame.height / 2
             let style = NSMutableParagraphStyle()
             style.alignment = self.valueAlignment
+            let base: DataSizeBase = measured ? .bit : self.base
+            let unit = measured ? SizeUnit.MB.key : self.speedUnit
+            let omitUnits = !measured && !self.unitsState
             
             let inputStringAttributes = [
                 NSAttributedString.Key.font: NSFont.systemFont(ofSize: 9, weight: .light),
@@ -364,18 +378,18 @@ public class SpeedWidget: WidgetWrapper {
                 NSAttributedString.Key.paragraphStyle: style
             ]
             
-            let inputY: CGFloat = self.displayValueState == "io" ? rowHeight + 1 : 1
-            let outputY: CGFloat = self.displayValueState == "io" ? 1 : rowHeight + 1
+            let inputY: CGFloat = downloadFirst ? rowHeight + 1 : 1
+            let outputY: CGFloat = downloadFirst ? 1 : rowHeight + 1
             
             let input = NSAttributedString.init(
-                string: Units(bytes: self.inputValue).getReadableSpeed(base: self.base, unit: self.speedUnit, omitUnits: !self.unitsState),
+                string: Units(bytes: measurement?.download ?? self.inputValue).getReadableSpeed(base: base, unit: unit, omitUnits: omitUnits),
                 attributes: inputStringAttributes
             )
             let output = NSAttributedString.init(
-                string: Units(bytes: self.outputValue).getReadableSpeed(base: self.base, unit: self.speedUnit, omitUnits: !self.unitsState),
+                string: Units(bytes: measurement?.upload ?? self.outputValue).getReadableSpeed(base: base, unit: unit, omitUnits: omitUnits),
                 attributes: outputStringAttributes
             )
-            if self.speedUnit != NetworkSpeedUnitAuto {
+            if unit != NetworkSpeedUnitAuto {
                 rowWidth = max(rowWidth, max(input.size().width, output.size().width).rounded(.up) + (Constants.Widget.margin.x*2))
             }
             
@@ -388,9 +402,9 @@ public class SpeedWidget: WidgetWrapper {
             width += rowWidth
         }
         
-        switch self.icon {
+        switch measured ? "dots" : self.icon {
         case "dots":
-            self.drawDots(width)
+            self.drawDots(width, downloadFirst: downloadFirst, measured: measured)
         case "arrows":
             self.drawArrows(width)
         case "chars":
@@ -401,22 +415,24 @@ public class SpeedWidget: WidgetWrapper {
         return width
     }
     
-    private func drawDots(_ width: CGFloat) {
+    private func drawDots(_ width: CGFloat, downloadFirst: Bool, measured: Bool) {
         let rowHeight: CGFloat = self.frame.height / 2
         let size: CGFloat = 6
         let y: CGFloat = (rowHeight-size)/2
         let x: CGFloat = self.iconAlignmentState == "left" ? Constants.Widget.margin.x : Constants.Widget.margin.x+(width-6)
-        let inputY: CGFloat = self.displayValueState == "io" ? 10.5 : y-0.2
-        let outputdY: CGFloat = self.displayValueState == "io" ? y-0.2 : 10.5
+        let inputY: CGFloat = downloadFirst ? 10.5 : y-0.2
+        let outputdY: CGFloat = downloadFirst ? y-0.2 : 10.5
         
         var inputCircle = NSBezierPath()
         inputCircle = NSBezierPath(ovalIn: CGRect(x: x, y: inputY, width: size, height: size))
-        self.inputColor(self.iconColorState).set()
+        let downloadColor: NSColor = measured ? (self.inputColorState.additional as? NSColor ?? .systemBlue) : self.inputColor(self.iconColorState)
+        downloadColor.set()
         inputCircle.fill()
         
         var outputCircle = NSBezierPath()
         outputCircle = NSBezierPath(ovalIn: CGRect(x: x, y: outputdY, width: size, height: size))
-        self.outputColor(self.iconColorState).set()
+        let uploadColor: NSColor = measured ? (self.outputColorState.additional as? NSColor ?? .systemRed) : self.outputColor(self.iconColorState)
+        uploadColor.set()
         outputCircle.fill()
     }
     
@@ -668,11 +684,12 @@ public class SpeedWidget: WidgetWrapper {
         self.display()
     }
     
-    public func setValue(input: Int64, output: Int64) {
+    public func setValue(input: Int64, output: Int64, measured: Bool = false) {
         let input = abs(input)
         let output = abs(output)
         let updated = self.queue.sync { () -> Bool in
-            var updated = false
+            var updated = self._measured != measured
+            self._measured = measured
             if self._inputValue != input {
                 self._inputValue = input
                 updated = true
