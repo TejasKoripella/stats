@@ -142,7 +142,6 @@ public class SpeedWidget: WidgetWrapper {
     
     public override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
-
         let measurement = self.queue.sync { () -> (download: Int64, upload: Int64)? in
             self._measured ? (self._inputValue, self._outputValue) : nil
         }

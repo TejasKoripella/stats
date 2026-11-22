@@ -138,7 +138,6 @@ internal class Settings: NSStackView, Settings_v, NSTextFieldDelegate {
     
     public func load(widgets: [widget_t]) {
         self.subviews.forEach{ $0.removeFromSuperview() }
-
         if widgets.contains(.speed) {
             let testButton = NSButton(title: localizedString("Run speed test"), target: self, action: #selector(self.runSpeedTest))
             let liveButton = NSButton(title: localizedString("Show live speeds"), target: self, action: #selector(self.showLiveSpeeds))
@@ -282,13 +281,11 @@ internal class Settings: NSStackView, Settings_v, NSTextFieldDelegate {
         self.speedTestButton?.isEnabled = !self.speedTestRunning
         self.liveSpeedButton?.isEnabled = !self.speedTestRunning && Store.shared.exist(key: NetworkSpeedTest.resultKey)
     }
-
     @objc private func runSpeedTest() {
         guard !self.speedTestRunning else { return }
         self.speedTestRunning = true
         self.updateSpeedTestButtons()
         let interface = Store.shared.string(key: "\(self.title)_interface", defaultValue: "")
-
         DispatchQueue.global(qos: .userInitiated).async {
             let result = Result {
                 try JSONEncoder().encode(NetworkSpeedTest.run(interface: interface))
@@ -308,12 +305,10 @@ internal class Settings: NSStackView, Settings_v, NSTextFieldDelegate {
             }
         }
     }
-
     @objc private func showLiveSpeeds() {
         Store.shared.remove(NetworkSpeedTest.resultKey)
         self.updateSpeedTestButtons()
     }
-
     private func inputField(id: String, value: String, placeholder: String) -> NSTextField {
         let field: NSTextField = NSTextField()
         field.identifier = NSUserInterfaceItemIdentifier(id)
