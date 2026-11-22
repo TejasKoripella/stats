@@ -233,6 +233,11 @@ public class Network: Module {
         }
         
         self.setReaders([self.usageReader, self.processReader, self.connectivityReader])
+        self.settingsView.canRunAutomaticSpeedTest = { [weak self] in
+            guard let self, self.enabled else { return false }
+            return self.menuBar.widgets.contains { $0.isActive && $0.type == .speed }
+        }
+        self.settingsView.scheduleSpeedTestRefresh()
         
         self.setIPUpdater()
         self.setUsageReset()

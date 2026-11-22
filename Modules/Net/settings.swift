@@ -77,6 +77,13 @@ internal class Settings: NSStackView, Settings_v, NSTextFieldDelegate {
     private var speedTestRunning = false
     private var speedTestButton: NSButton?
     private var liveSpeedButton: NSButton?
+    private var speedTestRefreshMenu: NSPopUpButton?
+    private var speedTestTimer: Timer?
+    private var speedTestRefreshInterval: NetworkSpeedTest.RefreshInterval {
+        let value = Store.shared.int(key: NetworkSpeedTest.refreshKey, defaultValue: 0)
+        return NetworkSpeedTest.RefreshInterval(rawValue: value) ?? .manual
+    }
+    var canRunAutomaticSpeedTest: () -> Bool = { false }
     
     public var callback: (() -> Void) = {}
     public var callbackWhenUpdateNumberOfProcesses: (() -> Void) = {}
@@ -135,6 +142,9 @@ internal class Settings: NSStackView, Settings_v, NSTextFieldDelegate {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+    deinit {
+        self.speedTestTimer?.invalidate()
+    }
     
     public func load(widgets: [widget_t]) {
         self.subviews.forEach{ $0.removeFromSuperview() }
@@ -145,8 +155,26 @@ internal class Settings: NSStackView, Settings_v, NSTextFieldDelegate {
             self.liveSpeedButton = liveButton
             self.updateSpeedTestButtons()
             let buttons = NSStackView(views: [testButton, liveButton])
+            let interval = self.selectView(
+                action: #selector(self.changeSpeedTestRefreshInterval),
+                items: NetworkSpeedTest.RefreshInterval.allCases.map {
+                    let label: String
+                    switch $0 {
+                    case .manual: label = "Manual"
+                    case .fifteenSeconds: label = "15 seconds"
+                    case .oneMinute: label = "1 minute"
+                    case .fiveMinutes: label = "5 minutes"
+                    case .tenMinutes: label = "10 minutes"
+                    case .fifteenMinutes: label = "15 minutes"
+                    }
+                    return KeyValue_t(key: "\($0.rawValue)", value: label)
+                },
+                selected: "\(self.speedTestRefreshInterval.rawValue)"
+            )
+            self.speedTestRefreshMenu = interval
             self.addArrangedSubview(PreferencesSection([
-                PreferencesRow(localizedString("Internet speed test"), component: buttons)
+                PreferencesRow(localizedString("Internet speed test"), component: buttons),
+                PreferencesRow(localizedString("Speed test refresh interval"), component: interval)
             ]))
         }
         
@@ -279,10 +307,35 @@ internal class Settings: NSStackView, Settings_v, NSTextFieldDelegate {
     private func updateSpeedTestButtons() {
         self.speedTestButton?.title = localizedString(self.speedTestRunning ? "Testing…" : "Run speed test")
         self.speedTestButton?.isEnabled = !self.speedTestRunning
-        self.liveSpeedButton?.isEnabled = !self.speedTestRunning && Store.shared.exist(key: NetworkSpeedTest.resultKey)
+        let hasResult = Store.shared.exist(key: NetworkSpeedTest.resultKey)
+        self.liveSpeedButton?.isEnabled = !self.speedTestRunning && (hasResult || self.speedTestRefreshInterval != .manual)
+    }
+    func scheduleSpeedTestRefresh() {
+        self.speedTestTimer?.invalidate()
+        self.speedTestTimer = nil
+        guard let seconds = self.speedTestRefreshInterval.seconds else { return }
+        let timer = Timer(timeInterval: seconds, repeats: true) { [weak self] _ in
+            self?.runSpeedTest(automatic: true)
+        }
+        timer.tolerance = 0.5
+        self.speedTestTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+    @objc private func changeSpeedTestRefreshInterval(_ sender: NSMenuItem) {
+        guard let key = sender.representedObject as? String, let value = Int(key),
+            let interval = NetworkSpeedTest.RefreshInterval(rawValue: value) else { return }
+        Store.shared.set(key: NetworkSpeedTest.refreshKey, value: interval.rawValue)
+        self.scheduleSpeedTestRefresh()
+        self.updateSpeedTestButtons()
+        if interval != .manual {
+            self.runSpeedTest(automatic: true)
+        }
     }
     @objc private func runSpeedTest() {
-        guard !self.speedTestRunning else { return }
+        self.runSpeedTest(automatic: false)
+    }
+    private func runSpeedTest(automatic: Bool) {
+        guard !self.speedTestRunning, !automatic || self.canRunAutomaticSpeedTest() else { return }
         self.speedTestRunning = true
         self.updateSpeedTestButtons()
         let interface = Store.shared.string(key: "\(self.title)_interface", defaultValue: "")
@@ -295,7 +348,7 @@ internal class Settings: NSStackView, Settings_v, NSTextFieldDelegate {
                 self.speedTestRunning = false
                 if case .success(let data) = result {
                     Store.shared.set(key: NetworkSpeedTest.resultKey, value: data)
-                } else if let window = self.window {
+                } else if !automatic, let window = self.window {
                     let alert = NSAlert()
                     alert.messageText = localizedString("The internet speed test didn’t complete.")
                     alert.informativeText = localizedString("Check your connection and run the test again.")
@@ -307,6 +360,9 @@ internal class Settings: NSStackView, Settings_v, NSTextFieldDelegate {
     }
     @objc private func showLiveSpeeds() {
         Store.shared.remove(NetworkSpeedTest.resultKey)
+        Store.shared.set(key: NetworkSpeedTest.refreshKey, value: NetworkSpeedTest.RefreshInterval.manual.rawValue)
+        self.speedTestRefreshMenu?.selectItem(at: 0)
+        self.scheduleSpeedTestRefresh()
         self.updateSpeedTestButtons()
     }
     private func inputField(id: String, value: String, placeholder: String) -> NSTextField {

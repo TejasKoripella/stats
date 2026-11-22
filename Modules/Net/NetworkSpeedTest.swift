@@ -2,6 +2,18 @@ import Foundation
 
 enum NetworkSpeedTest {
     static let resultKey = "Network_speedTestResult"
+    static let refreshKey = "Network_speedTestRefreshSeconds"
+    enum RefreshInterval: Int, CaseIterable {
+        case manual = 0
+        case fifteenSeconds = 15
+        case oneMinute = 60
+        case fiveMinutes = 300
+        case tenMinutes = 600
+        case fifteenMinutes = 900
+        var seconds: TimeInterval? {
+            self == .manual ? nil : TimeInterval(self.rawValue)
+        }
+    }
     struct Result: Codable {
         let downloadBytesPerSecond: Int64
         let uploadBytesPerSecond: Int64
